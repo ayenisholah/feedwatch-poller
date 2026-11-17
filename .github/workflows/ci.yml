@@ -20,7 +20,7 @@ jobs:
       - name: Commit messages
         if: github.event_name == 'pull_request'
         run: npx --yes -p @commitlint/cli@21 -p @commitlint/config-conventional@21 commitlint --from "${{ github.event.pull_request.base.sha }}" --to "${{ github.event.pull_request.head.sha }}"
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
       - uses: taiki-e/install-action@v2
         with: { tool: "cargo-llvm-cov,cargo-deny" }
       - name: All gates

@@ -6,14 +6,13 @@ Read this first. Update it in the same commit as the work. The system-wide state
 
 ## Next step
 
-Branch `feat/manifest` (FR-FW-1). In `src/manifest.rs`, add a `Feed` type (chain, feed ID, address, heartbeat, deviation threshold) and `load_feeds(chain)`, which merges `update_triggers_overrides` into the defaults. Test it with a feed that has an override (Ethereum `LBTC_FUNDAMENTAL`: 1% deviation, 24 h heartbeat) and one that doesn't (`USD3`). Validate addresses as 0x plus 40 hex characters.
-
-After that: `feat/abi`, then `feat/rpc`, `feat/checks`, `feat/reference`, `feat/influx-sink` and `feat/poll-loop` (feedwatch-platform `docs/ROADMAP.md`, M1).
+Branch `feat/abi` (part of FR-FW-2), following `../feedwatch-platform/docs/plans/m1-poller.md` step 2. In `src/abi.rs`, decode `latestRoundData()` and `decimals()` results (int256 two's complement to i128). Reject short, odd-length, non-hex and negative answers. Use the real 2026-11-16 call results as fixtures.
 
 ## Done
 
 | Date | Work |
 |---|---|
+| 2026-11-17 | `feat/manifest` (FR-FW-1): `load_feeds(chain)` returns every feed with its address and schedule. Overrides are merged field by field into the defaults. The 4 Ethereum `cron` feeds (`mzUSD_*`, `mzPRIME_*`) become a daily `Schedule::Cron` with freshness checks only. Rejects bad addresses, non-daily cron, wrong chain IDs and incomplete defaults. |
 | 2026-11-16 | Scaffold: Cargo project, module stubs naming their requirements, manifests vendored at RedStone commit `c75bac13` (95/21/30 feeds), `fr_fw_1_manifests_parse`, check script, Dockerfile, CI. |
 
 ## In progress

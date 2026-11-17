@@ -1,6 +1,6 @@
 //! Entry point. Wires modules together only (feedwatch-platform `docs/ENGINEERING_STANDARDS.md`).
 
-use feedwatch_poller::manifest::{Chain, parse_manifest};
+use feedwatch_poller::manifest::{Chain, Schedule, load_feeds};
 
 fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
@@ -9,11 +9,16 @@ fn main() -> anyhow::Result<()> {
         .init();
 
     for chain in Chain::ALL {
-        let manifest = parse_manifest(chain.vendored_manifest())?;
+        let feeds = load_feeds(chain)?;
+        let cron = feeds
+            .iter()
+            .filter(|f| matches!(f.schedule, Schedule::Cron { .. }))
+            .count();
         tracing::info!(
             chain = chain.as_str(),
-            feeds = manifest.price_feeds.len(),
-            "manifest loaded"
+            feeds = feeds.len(),
+            cron,
+            "feeds loaded"
         );
     }
     tracing::info!("scaffold only: the poll loop arrives in M1 (feat/poll-loop)");

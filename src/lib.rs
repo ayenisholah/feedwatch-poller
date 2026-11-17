@@ -2,11 +2,12 @@
 //!
 //! Module map and the requirement each delivers (see feedwatch-platform `docs/REQUIREMENTS.md`):
 //! `manifest` FR-FW-1, `abi` and `rpc` FR-FW-2, `checks` FR-FW-3/4, `reference` FR-FW-4,
-//! `influx` FR-FW-5, `poller` NFR-1/2. `config` reads the environment.
+//! `influx` FR-FW-5, `poller` NFR-1, `health` NFR-2. `config` reads the environment.
 
 pub mod abi;
 pub mod checks;
 pub mod config;
+pub mod health;
 pub mod influx;
 pub mod manifest;
 pub mod poller;

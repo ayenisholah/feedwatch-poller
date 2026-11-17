@@ -1,10 +1,11 @@
 //! Configuration from the environment (see `.env.example`), validated once at start.
 //!
-//! `feat/rpc` adds the RPC provider lists and the poll interval. `feat/influx-sink` adds InfluxDB.
+//! RPC provider lists, the poll interval, and the InfluxDB connection.
 
 use std::collections::BTreeMap;
 use std::time::Duration;
 
+use crate::influx::InfluxConfig;
 use crate::manifest::Chain;
 
 /// Validated poller configuration.
@@ -14,6 +15,8 @@ pub struct Config {
     pub rpc: BTreeMap<Chain, Vec<String>>,
     /// Time between poll cycles.
     pub poll_interval: Duration,
+    /// Where results are written.
+    pub influx: InfluxConfig,
 }
 
 /// A configuration problem, naming the variable at fault.
@@ -74,7 +77,28 @@ impl Config {
                 }
             },
         };
-        Ok(Config { rpc, poll_interval })
+        let required = |name: &str| {
+            get(name)
+                .filter(|v| !v.trim().is_empty())
+                .ok_or(ConfigError::Missing(name.to_owned()))
+        };
+        let influx = InfluxConfig {
+            url: required("INFLUX_URL")?.trim_end_matches('/').to_owned(),
+            org: get("INFLUX_ORG").unwrap_or_else(|| "feedwatch".to_owned()),
+            bucket: get("INFLUX_BUCKET").unwrap_or_else(|| "feedwatch".to_owned()),
+            token: required("INFLUX_TOKEN")?,
+        };
+        if reqwest::Url::parse(&influx.url).is_err() {
+            return Err(ConfigError::Invalid {
+                name: "INFLUX_URL".to_owned(),
+                reason: "must be a URL",
+            });
+        }
+        Ok(Config {
+            rpc,
+            poll_interval,
+            influx,
+        })
     }
 }
 
@@ -92,13 +116,15 @@ mod tests {
         move |k| map.get(k).cloned()
     }
 
-    const ALL_RPC: [(&str, &str); 3] = [
+    const ALL_RPC: [(&str, &str); 5] = [
         (
             "FEEDWATCH_RPC_ETHEREUM",
             "https://a.example, https://b.example",
         ),
         ("FEEDWATCH_RPC_ARBITRUM", "https://c.example"),
         ("FEEDWATCH_RPC_BASE", "http://127.0.0.1:8545"),
+        ("INFLUX_URL", "http://127.0.0.1:8086/"),
+        ("INFLUX_TOKEN", "t"),
     ];
 
     #[test]
@@ -110,6 +136,26 @@ mod tests {
         );
         assert_eq!(config.rpc[&Chain::Base], ["http://127.0.0.1:8545"]);
         assert_eq!(config.poll_interval, Duration::from_secs(60));
+        assert_eq!(
+            config.influx,
+            InfluxConfig {
+                url: "http://127.0.0.1:8086".to_owned(),
+                org: "feedwatch".to_owned(),
+                bucket: "feedwatch".to_owned(),
+                token: "t".to_owned()
+            }
+        );
+    }
+
+    #[test]
+    fn requires_the_influx_url_and_token() {
+        let error = Config::from_env(env(&ALL_RPC[..4])).unwrap_err();
+        assert_eq!(error, ConfigError::Missing("INFLUX_TOKEN".to_owned()));
+        let mut bad = ALL_RPC.to_vec();
+        bad[3] = ("INFLUX_URL", "not a url");
+        assert!(
+            matches!(Config::from_env(env(&bad)), Err(ConfigError::Invalid { name, .. }) if name == "INFLUX_URL")
+        );
     }
 
     #[test]
@@ -124,7 +170,8 @@ mod tests {
 
     #[test]
     fn names_the_missing_variable() {
-        let error = Config::from_env(env(&ALL_RPC[..2])).unwrap_err();
+        let error =
+            Config::from_env(env(&[ALL_RPC[0], ALL_RPC[1], ALL_RPC[3], ALL_RPC[4]])).unwrap_err();
         assert_eq!(error, ConfigError::Missing("FEEDWATCH_RPC_BASE".to_owned()));
         assert_eq!(error.to_string(), "FEEDWATCH_RPC_BASE is not set");
     }

@@ -6,17 +6,19 @@ Read this first. Update it in the same commit as the work. The system-wide state
 
 ## Next step
 
-Branch `feat/checks` (FR-FW-3, FR-FW-4), following `../feedwatch-platform/docs/plans/m1-poller.md` step 4. It's pure: `assess`, `IncidentTracker` and `spread`.
+Branch `feat/reference` (FR-FW-4), following `../feedwatch-platform/docs/plans/m1-poller.md` step 5. Reference prices for ETH, BTC and USDC:
+- Chainlink on Ethereum mainnet, through `RpcClient` and `abi`;
+- Coinbase spot as the fallback;
+- prefer Chainlink when its update is under 1 h old;
+- 30 s cache, time injected.
 
-**New input from the live check:** a feed's `latestRoundData()` can revert. On 2026-11-17, Ethereum `USUAL` (`0x2240AE461B34CC56D654ba5FA5830A243Ca54840`) reverted with `InvalidLastUpdateDetails(bytes32,uint256,uint256,uint256)` (selector `0x4f319ffe`). Its data carries a last-update timestamp of 2026-11-05 12:01 UTC, against a 24 h heartbeat (platform fact F-15). Handle it this way:
-- Give `assess` the call outcome, not just `Option<Round>`.
-- A revert is `error`, with the revert reason in the incident detail.
-- Decoding `InvalidLastUpdateDetails` to report it as `stale` with its timestamp is a follow-up, once the meaning of its four fields is confirmed in RedStone's contracts.
+First check the Chainlink BTC/USD (`0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c`) and USDC/USD (`0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6`) addresses live, and add them as platform facts F-16 and F-17 (F-15 is now the USUAL revert).
 
 ## Done
 
 | Date | Work |
 |---|---|
+| 2026-11-17 | `feat/checks` (FR-FW-3, FR-FW-4, FR-FW-5 logic): `assess` gives `stale` past heartbeat × 1.1 (cron feeds use their daily period). It gives `drift` beyond the deviation threshold after 10 minutes (trigger feeds with a reference), and `error` for reverts (such as `USUAL`) or no answer. Stale wins over drift. `IncidentTracker` produces open and close events with one ID, closes then opens on a kind change, and resumes from stored open incidents. `spread` is range over median. |
 | 2026-11-17 | `feat/rpc` (FR-FW-2, NFR-1): `RpcClient::call_batch` sends batches of 20 or fewer, matches responses by `id`, retries transient failures twice, then fails over to the next provider. It keeps per-call JSON-RPC errors and records one `RpcCallStat` per request, with the host only. `Config::from_env` validates the RPC lists and the poll interval. Live: publicnode accepted batches of 100 (F-12). |
 | 2026-11-17 | `feat/abi` (part of FR-FW-2): decodes `latestRoundData()` and `decimals()` results. Rejects negative answers, out-of-range values, wrong lengths and non-hex. Tested against a real ETH round recorded on 2026-11-17 (`tests/fixtures/`). |
 | 2026-11-17 | `feat/manifest` (FR-FW-1): `load_feeds(chain)` returns every feed with its address and schedule. Overrides are merged field by field into the defaults. The 4 Ethereum `cron` feeds (`mzUSD_*`, `mzPRIME_*`) become a daily `Schedule::Cron` with freshness checks only. Rejects bad addresses, non-daily cron, wrong chain IDs and incomplete defaults. |

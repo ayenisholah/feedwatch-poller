@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Builds for the platform buildx targets; production is linux/arm64 (t4g, docs/DEPLOYMENT.md).
-FROM rust:1.96-slim-bookworm AS build
+FROM rust:1.100-slim-bookworm AS build
 WORKDIR /src
 COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 COPY src ./src

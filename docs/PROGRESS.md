@@ -1,6 +1,6 @@
 # Progress
 
-**Updated:** 2026-11-16
+**Updated:** 2026-11-18
 
 Read this first. Update it in the same commit as the work. The system-wide state is in `../feedwatch-platform/docs/PROGRESS.md`.
 
@@ -14,6 +14,7 @@ Read this first. Update it in the same commit as the work. The system-wide state
 
 | Date | Work |
 |---|---|
+| 2026-11-18 | `ci/deploy-on-merge` (NFR-3): a `Deploy` workflow calls feedwatch-platform's reusable deploy workflow after `CI` passes on `main`, so every merge reaches production (platform ADR 0008). Needs the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` secrets from platform `scripts/aws/set-deploy-secrets.sh`. |
 | 2026-11-17 | `feat/poll-loop` (NFR-1, NFR-2): `Poller::cycle` reads the chains concurrently, caching decimals, and maps reverts to `error`. It applies references, checks and incidents, and makes one write per cycle. `main` runs it on an interval with graceful shutdown, serves `/health` (503 after 3 missed intervals) and `/metrics`, and prints an EMF line per cycle. First live run: 146 feeds in about 1.5 s; USUAL is an `error` incident; the incident is reloaded on restart. |
 | 2026-11-17 | `build(deny)`: ignored RUSTSEC-2026-0440 (unmaintained `astral-tokio-tar`, reached only through the testcontainers dev-dependency). |
 | 2026-11-17 | `feat/influx-sink` (FR-FW-5): line protocol for all five measurements, checked by a contract test against `tests/fixtures/influx-schema.json`. That's a vendored copy of the platform contract, now v2 with `deviation_threshold_pct` optional for cron feeds; the test also checks the copy matches a sibling platform checkout. `HttpInflux` writes, and `open_incidents` reloads incidents whose last event is `open` (Flux, annotated CSV). Real InfluxDB 2.9.1 tests run through testcontainers when `CI` is set. Config gains `INFLUX_URL`, `INFLUX_TOKEN`, `INFLUX_ORG` and `INFLUX_BUCKET`. |

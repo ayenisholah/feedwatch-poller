@@ -1,0 +1,60 @@
+{
+  "$comment": "Feedwatch InfluxDB contract. Prose and rules in docs/DATA_CONTRACT.md. Bump version on any change. Fields ending in ? may be absent.",
+  "version": 2,
+  "bucket": "feedwatch",
+  "org": "feedwatch",
+  "precision": "s",
+  "retentionDays": 30,
+  "chains": ["ethereum", "arbitrum", "base"],
+  "measurements": {
+    "feed_round": {
+      "tags": ["chain", "feed_id"],
+      "fields": {
+        "value": "float",
+        "answer_raw": "string",
+        "round_id": "string",
+        "updated_at": "int",
+        "age_s": "int"
+      }
+    },
+    "feed_check": {
+      "tags": ["chain", "feed_id", "status"],
+      "tagValues": {
+        "status": ["ok", "stale", "drift", "error"]
+      },
+      "fields": {
+        "heartbeat_s": "int",
+        "deviation_threshold_pct": "float?",
+        "reference_deviation_pct": "float?",
+        "reference_source": "string?"
+      }
+    },
+    "rpc_call": {
+      "tags": ["chain", "provider"],
+      "fields": {
+        "latency_ms": "int",
+        "ok": "bool",
+        "calls": "int"
+      }
+    },
+    "incident": {
+      "tags": ["chain", "feed_id", "kind", "event"],
+      "tagValues": {
+        "kind": ["stale", "drift", "error"],
+        "event": ["open", "close"]
+      },
+      "fields": {
+        "incident_id": "string",
+        "detail": "string"
+      }
+    },
+    "poll_cycle": {
+      "tags": [],
+      "fields": {
+        "duration_ms": "int",
+        "feeds": "int",
+        "failed_feeds": "int"
+      }
+    }
+  }
+}

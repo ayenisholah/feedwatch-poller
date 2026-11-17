@@ -5,9 +5,12 @@ cd "$(dirname "$0")/.."
 
 cargo fmt --all -- --check
 cargo clippy --all-targets --locked -- -D warnings
-cargo test --locked
+# Tests that need Docker (testcontainers) are #[ignore]d; CI=1 includes them.
+IGNORED=()
+if [ "${CI:-}" = "1" ] || [ "${CI:-}" = "true" ]; then IGNORED=(-- --include-ignored); fi
+cargo test --locked "${IGNORED[@]}"
 # main.rs only wires modules together (docs/ENGINEERING_STANDARDS.md), so coverage is measured on the library.
-cargo llvm-cov --locked --fail-under-lines 95 --ignore-filename-regex 'src/main\.rs$' --summary-only
+cargo llvm-cov --locked --fail-under-lines 95 --ignore-filename-regex 'src/main\.rs$' --summary-only "${IGNORED[@]}"
 if command -v cargo-deny >/dev/null 2>&1; then
   cargo deny check
 else

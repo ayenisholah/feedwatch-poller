@@ -6,18 +6,18 @@ Read this first. Update it in the same commit as the work. The system-wide state
 
 ## Next step
 
-Branch `feat/influx-sink` (FR-FW-5), following `../feedwatch-platform/docs/plans/m1-poller.md` step 6:
-- pure `line_protocol` for the five measurements in `contracts/influx-schema.json` v1;
-- an `InfluxWriter` trait plus an HTTP writer (`/api/v2/write`, token auth, seconds precision);
-- `load_open_incidents` with one Flux query, feeding `IncidentTracker::with_open`;
-- `config.rs` gains `INFLUX_URL`, `INFLUX_ORG`, `INFLUX_BUCKET` and `INFLUX_TOKEN`.
+Branch `feat/poll-loop` (NFR-1, NFR-2), following `../feedwatch-platform/docs/plans/m1-poller.md` step 7:
+- `Poller::cycle(now)` reads all chains concurrently, caching decimals after the first success. It turns call errors into `Reading::Reverted` or `Reading::Unavailable`, takes references from `ReferenceBook`, then runs `assess` and `IncidentTracker::observe` (seeded from `InfluxStore::open_incidents` at start), and makes one `InfluxStore::write` per cycle.
+- An EMF log line per cycle carries `PollCycleFailed`.
+- `main.rs`: a Tokio interval loop plus Axum `/health` and `/metrics` on `FEEDWATCH_HEALTH_ADDR`.
 
-Tests: line-protocol snapshots, a contract test against a vendored copy of the schema, and testcontainers `influxdb:2.9.1`. The container tests are `#[ignore]` locally and run in CI through a `CI=1` branch in `scripts/check.sh`.
+Then the platform PR that adds `poller` to `compose.yaml`.
 
 ## Done
 
 | Date | Work |
 |---|---|
+| 2026-11-17 | `feat/influx-sink` (FR-FW-5): line protocol for all five measurements, checked by a contract test against `tests/fixtures/influx-schema.json`. That's a vendored copy of the platform contract, now v2 with `deviation_threshold_pct` optional for cron feeds; the test also checks the copy matches a sibling platform checkout. `HttpInflux` writes, and `open_incidents` reloads incidents whose last event is `open` (Flux, annotated CSV). Real InfluxDB 2.9.1 tests run through testcontainers when `CI` is set. Config gains `INFLUX_URL`, `INFLUX_TOKEN`, `INFLUX_ORG` and `INFLUX_BUCKET`. |
 | 2026-11-17 | `feat/reference` (FR-FW-4): `ReferenceBook::prices(now)` reads Chainlink ETH, BTC and USDC on mainnet in one batch and uses each while within its maximum age (1 h for ETH and BTC, 24 h for USDC). Otherwise it uses Coinbase spot; with neither, there's no reference and drift is skipped. 30 s cache. `Asset::for_feed` matches only `ETH`, `BTC` and `USDC`. Addresses verified on-chain through `description()` (platform F-16 and F-17). |
 | 2026-11-17 | `feat/checks` (FR-FW-3, FR-FW-4, FR-FW-5 logic): `assess` gives `stale` past heartbeat × 1.1 (cron feeds use their daily period). It gives `drift` beyond the deviation threshold after 10 minutes (trigger feeds with a reference), and `error` for reverts (such as `USUAL`) or no answer. Stale wins over drift. `IncidentTracker` produces open and close events with one ID, closes then opens on a kind change, and resumes from stored open incidents. `spread` is range over median. |
 | 2026-11-17 | `feat/rpc` (FR-FW-2, NFR-1): `RpcClient::call_batch` sends batches of 20 or fewer, matches responses by `id`, retries transient failures twice, then fails over to the next provider. It keeps per-call JSON-RPC errors and records one `RpcCallStat` per request, with the host only. `Config::from_env` validates the RPC lists and the poll interval. Live: publicnode accepted batches of 100 (F-12). |
